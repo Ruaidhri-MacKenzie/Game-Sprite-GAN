@@ -1,19 +1,5 @@
 import { fileName, frameWidth, frameHeight, spriteCount, inputShape, batchSize } from "./config.js";
 
-const cropImage = (image, x, y, width, height) => {
-	const canvas = document.createElement("canvas");
-	canvas.width = image.width;
-	canvas.height = image.height;
-	
-	const ctx = canvas.getContext("2d");
-	ctx.drawImage(image, 0, 0);
-	ctx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
-	
-	const croppedImage = new Image();
-	croppedImage.src = canvas.toDataURL("image/png");
-	return croppedImage;
-};
-
 const imageToTensor = async (image) => {
 	const bitmap = await createImageBitmap(image);
 	const tensor = tf.browser.fromPixels(bitmap);
@@ -21,32 +7,38 @@ const imageToTensor = async (image) => {
 };
 
 const tensorToImage = async (tensor) => {
-	const canvas = document.createElement("canvas");
-	canvas.width = tensor.shape.width;
-	canvas.height = tensor.shape.height;
+	const canvas = new OffscreenCanvas(tensor.shape.width, tensor.shape.height);
 	await tf.browser.toPixels(tensor, canvas);
 	const image = new Image();
 	image.src = canvas.toDataURL("image/png");
 	return image;
 };
 
-export const loadDataset = async () => {
+const cropImageToTensor = (image, x, y, width, height) => {
+	const canvas = new OffscreenCanvas(image.width, image.height);
+	const ctx = canvas.getContext("2d");
+	ctx.drawImage(image, 0, 0);
+
+	const imageData = ctx.getImageData(x, y, width, height);
+	const tensor = tf.browser.fromPixels(imageData);
+	return tensor;
+};
+
+export const loadDataset = () => {
 	// load spritesheet
 	const spritesheet = new Image();
 	spritesheet.src = `/data/${fileName}`;
 	const columns = spritesheet.width / (frameWidth * 2);
 
-	// split into { input, target } instances
+	// create dataset of { input, target } instances
 	const dataset = [];
+
 	for (let i = 0; i < spriteCount; i++) {
 		const x = i % columns;
 		const y = (i - x) / columns;
 		
-		const inputFrame = cropImage(spritesheet, x, y, frameWidth, frameHeight);
-		const targetFrame = cropImage(spritesheet, x + frameWidth, y, frameWidth, frameHeight);
-
-		const input = await imageToTensor(inputFrame);
-		const target = await imageToTensor(targetFrame);
+		const input = cropImageToTensor(spritesheet, x, y, frameWidth, frameHeight);
+		const target = cropImageToTensor(spritesheet, x + frameWidth, y, frameWidth, frameHeight);
 
 		dataset.push({ input, target });
 	}

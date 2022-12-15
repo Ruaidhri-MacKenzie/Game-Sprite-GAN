@@ -1,12 +1,19 @@
 // Data Config
 export const imageWidth = 64;
 export const imageHeight = 64;
-export const imageChannels = 4;
+export const imageChannels = 4;	// RGBA
 
+// RPG Maker 2000 Spritesheet
 export const fileName = "RPG Maker 2000 Dedupe.png";
 export const frameWidth = 24;
 export const frameHeight = 32;
-export const spriteCount = 71;
+export const spriteCount = 71;	// Pairs of frames
+
+// // Odyssey Spritesheet
+// export const fileName = "Odyssey.png";
+// export const frameWidth = 32;
+// export const frameHeight = 32;
+// export const spriteCount = 80;
 
 // Model Config
 export const inputShape = [imageWidth, imageHeight, imageChannels];
