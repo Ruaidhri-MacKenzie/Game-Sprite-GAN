@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Ruaidhri MacKenzie - Honours Project - GAN</title>
+	<link rel="shortcut icon" href="img/favicon.png" type="image/png">
+	<link rel="stylesheet" href="css/style.css">
+	<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+	<script type="module" src="src/main.js"></script>
+</head>
+<body>
+	<header>
+		<h1>GAN</h1>
+	</header>
+	
+	<form>
+		<div>
+			<button id="reset">Reset Model</button>
+			<button id="load">Load Model</button>
+			<button id="save">Save Model</button>
+		</div>
+		<div>
+			<button id="train">Train</button>
+			<button id="test">Test</button>
+			<button id="generate">Generate</button>
+		</div>
+	</form>
+
+	<div class="image-previews">
+		<div class="image-preview">
+			<h2>Source:</h2>
+			<img id="input">
+		</div>
+		
+		<div class="image-preview">
+			<h2>Target:</h2>
+			<img id="target">
+		</div>
+		
+		<div class="image-preview">
+			<h2>Generated:</h2>
+			<img id="output">
+		</div>
+	</div>
+</body>
+</html>
