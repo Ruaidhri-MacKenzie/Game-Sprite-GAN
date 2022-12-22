@@ -1,13 +1,16 @@
-import { loadDataset, getInputs, getTargets } from "./data.js";
+import { loadDataset, tensorToImage } from "./data.js";
 import { createGAN, trainModel, testModel, generateImage } from "./model.js";
+import { createGenerator } from "./generator.js";
+import { createDiscriminator } from "./discriminator.js";
 
+const generator = createGenerator();
+const discriminator = createDiscriminator();
 let model = createGAN();
+
 const dataset = await loadDataset();
-const testInstance = dataset.shift();
-const testX = testInstance.input;
-const testY = testInstance.target;
-const trainX = getInputs(dataset);
-const trainY = getTargets(dataset);
+const { trainData, testData } = dataset;
+const [trainX, trainY] = tf.unstack(trainData);
+const [testX, testY] = tf.unstack(testData);
 
 // UI
 const resetButton = document.getElementById("reset");
@@ -78,13 +81,16 @@ const onClickTrain = async (event) => {
 
 	training = true;
 	trained = false;
-	const result = await trainModel(model, trainX, trainY);
+
+	const result = await trainModel(generator, discriminator, trainX, trainY);
 	console.log(`Training Loss: ${result.history.loss[0]}`);
+	
 	trained = true;
 	training = false;
 };
 
 const onClickTest = async (event) => {
+	// FID of generated image to target image
 	event.preventDefault();
 	if (training) {
 		console.log("Model is currently training...");
@@ -117,7 +123,16 @@ const onClickGenerate = async (event) => {
 
 	const prediction = await generateImage(model, testX, testY);
 	console.log(prediction);
+
+	outputImage.src = await tensorToImage(prediction);
 };
+
+// const testXImage = await tensorToImage(testX);
+// const testYImage = await tensorToImage(testY);
+// testXImage.onload = () => {
+// 	inputImage.src = testXImage;
+// };
+// targetImage.src = testYImage;
 
 resetButton.addEventListener("click", onClickReset);
 loadButton.addEventListener("click", onClickLoad);

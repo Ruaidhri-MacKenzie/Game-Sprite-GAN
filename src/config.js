@@ -15,6 +15,9 @@ export const spriteCount = 71;	// Pairs of frames
 // export const frameHeight = 32;
 // export const spriteCount = 80;
 
+export const datasetUrl = `/data/${fileName}`;
+export const testInstances = 1;
+
 // Model Config
 export const inputShape = [imageWidth, imageHeight, imageChannels];
 export const optimizer = "adam";

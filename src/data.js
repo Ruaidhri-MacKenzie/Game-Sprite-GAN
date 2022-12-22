@@ -1,51 +1,45 @@
-import { fileName, frameWidth, frameHeight, spriteCount, inputShape, batchSize } from "./config.js";
+import { datasetUrl, frameWidth, frameHeight, spriteCount, imageWidth, imageHeight, imageChannels, testInstances } from "./config.js";
 
-const imageToTensor = async (image) => {
-	const bitmap = await createImageBitmap(image);
-	const tensor = tf.browser.fromPixels(bitmap);
-	return tensor;
-};
-
-const tensorToImage = async (tensor) => {
-	const canvas = new OffscreenCanvas(tensor.shape.width, tensor.shape.height);
+export const tensorToImage = async (tensor) => {
+	const canvas = new OffscreenCanvas(tensor.shape[0], tensor.shape[1]);
 	await tf.browser.toPixels(tensor, canvas);
 	const image = new Image();
-	image.src = canvas.toDataURL("image/png");
+	image.src = canvas.transferToImageBitmap();
 	return image;
 };
 
-const cropImageToTensor = (image, x, y, width, height) => {
-	const canvas = new OffscreenCanvas(image.width, image.height);
-	const ctx = canvas.getContext("2d");
-	ctx.drawImage(image, 0, 0);
-
-	const imageData = ctx.getImageData(x, y, width, height);
-	const tensor = tf.browser.fromPixels(imageData);
-	return tensor;
-};
-
-export const loadDataset = () => {
-	// load spritesheet
+export const loadDataset = async () => {
+  // Load the spritesheet into a tensor
 	const spritesheet = new Image();
-	spritesheet.src = `/data/${fileName}`;
-	const columns = spritesheet.width / (frameWidth * 2);
+	spritesheet.src = datasetUrl;
+	const dataset = await tf.browser.fromPixelsAsync(spritesheet, imageChannels);
 
-	// create dataset of { input, target } instances
-	const dataset = [];
+	// Split the spritesheet into individual image and label image tensors
+	const inputImages = [];
+	const targetImages = [];
+	const columns = spritesheet.width / (frameWidth * 2);
 
 	for (let i = 0; i < spriteCount; i++) {
 		const x = i % columns;
 		const y = (i - x) / columns;
-		
-		const input = cropImageToTensor(spritesheet, x, y, frameWidth, frameHeight);
-		const target = cropImageToTensor(spritesheet, x + frameWidth, y, frameWidth, frameHeight);
 
-		dataset.push({ input, target });
+		const inputImage = dataset.slice([x, y, 0], [frameWidth, frameHeight, imageChannels]);
+  	const targetImage = dataset.slice([x + frameWidth, y, 0], [frameWidth, frameHeight, imageChannels]);
+		
+		const paddedInputImage = inputImage.pad([[0, imageWidth - frameWidth], [0, imageHeight - frameHeight], [0, 0]], 0);
+		const paddedTargetImage = targetImage.pad([[0, imageWidth - frameWidth], [0, imageHeight - frameHeight], [0, 0]], 0);
+
+  	inputImages.push(paddedInputImage.expandDims());
+  	targetImages.push(paddedTargetImage.expandDims());
 	}
 
-	return dataset;
-};
+	// Concatenate the image and label image tensors into a single tensor
+	const data = tf.concat([tf.stack(inputImages, 1), tf.stack(targetImages, 1)]);
 
-export const getInputs = (dataset) => dataset.map(instance => instance.input);
-export const getTargets = (dataset) => dataset.map(instance => instance.target);
-export const generateNoise = () => tf.randomNormal([batchSize, inputShape[0], inputShape[1], inputShape[2]]);
+	// Split the data into a training set and a test set
+	const [trainData, testData] = tf.split(data, [spriteCount - testInstances, testInstances], 1);
+
+	// TODO: Shuffle the data
+
+	return { trainData, testData };
+};
