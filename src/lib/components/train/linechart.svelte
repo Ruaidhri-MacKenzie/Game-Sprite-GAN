@@ -1,6 +1,5 @@
 <script>
 	import * as tfvis from "@tensorflow/tfjs-vis";
-	import { afterUpdate } from "svelte";
 
 	export let values;
 	export let name;
@@ -12,8 +11,7 @@
 	export let fontSize = 12;
 	let chart;
 
-	afterUpdate(() => {
-		if (!chart) return;
+	$: if (chart && values) {
 		tfvis.render.linechart(chart, { values, series: [name] }, {
 			zoomToFit,
 			xLabel,
@@ -22,7 +20,7 @@
 			height,
 			fontSize,
 		});
-	});
+	}
 </script>
 
 <div bind:this={chart} />

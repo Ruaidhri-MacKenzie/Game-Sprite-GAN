@@ -38,8 +38,7 @@
 		sprites = sprites.reshape([spriteCount, $spriteHeight, $spriteWidth, $spriteChannels]);
 
 		// Pad
-		sprites = sprites.pad([[0, 0], [0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, 0]], 0);
-		sprites = sprites.pad([[0, 0], [0, 0], [0, 0],  [0, $imageChannels - $spriteChannels]], 1);
+		sprites = sprites.pad([[0, 0], [0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, $imageChannels - $spriteChannels]], 0);
 
 		// Crop
 		sprites.slice([0, 0, 0, 0], [-1, $imageHeight, $imageWidth, $imageChannels]);

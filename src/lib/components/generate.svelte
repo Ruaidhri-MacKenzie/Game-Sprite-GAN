@@ -1,51 +1,73 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
 	import { imageWidth, imageHeight, imageChannels, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
-	import { generator } from "$lib/stores/model.js";
-	import { downloadModel } from "$lib/actions/model.js";
+	import { worker } from "$lib/stores/train.js";
 	
+	let generating = false;
+	
+	export let target;	// Bound
+	$: if (target != null) {
+		target = tf.tensor4d(target, [1, $imageHeight, $imageWidth, $imageChannels]);
+		target = inputToSprite(target);
+		tf.browser.toPixels(target, generatedImage);
+		generating = false;
+	}
+
 	let sourceImage;
 	let generatedImage;
+	let source;
 
-	const spritePipeline = (sprite) => {
-		sprite = sprite.reshape([$spriteHeight, $spriteWidth, $spriteChannels]);
+	const spriteToInput = (sprite) => {
+		// Normalise values to [-1,1]
 		sprite = sprite.div(255 / 2).sub(1);
-		sprite = sprite.pad([[0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, 0]], 0);
-		sprite = sprite.pad([[0, 0], [0, 0],  [0, $imageChannels - $spriteChannels]], 1);
-		// sprite.slice([0, 0, 0], [$imageHeight, $imageWidth, $imageChannels]);
+
+		// Pad to model input shape
+		sprite = sprite.pad([[0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, $imageChannels - $spriteChannels]], 0);
+
 		return sprite;
 	};
 
-	const uploadSourceAndGenerate = async (event) => {
+	const inputToSprite = (input) => {
+		// Crop to sprite shape
+		input = input.slice([0, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]);
+		
+		// Remove batch dimension
+		input = input.squeeze();
+		
+		// Normalise values to [0,1]
+		input = input.add(1).div(2);
+
+		return input;
+	};
+
+	const uploadSource = async (event) => {
 		const image = new Image();
 		image.src = URL.createObjectURL(event.target.files[0]);
     await new Promise((resolve, reject) => {
 			image.onload = () => resolve(image);
 			image.onerror = reject;
     });
-		let source = tf.browser.fromPixels(image, $spriteChannels);
-		source = spritePipeline(source);
-		source = source.reshape([1, $imageHeight, $imageWidth, $imageChannels]);
-		let target = await $generator.predict(source);
-		source = source.slice([0, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]).squeeze().add(1).div(2);
-		target = target.slice([0, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]).squeeze().add(1).div(2);
+		source = tf.browser.fromPixels(image, $spriteChannels);
 		tf.browser.toPixels(source, sourceImage);
-		tf.browser.toPixels(target, generatedImage);
+		source = spriteToInput(source);
 	};
-
-	const saveGenerator = (event) => {
-		downloadModel($generator, "sprite-gan");
+	
+	const generate = async (event) => {
+		generating = true;
+		$worker.postMessage({ source: source.dataSync() });
 	};
 </script>
 
 <section>
 	<h2>Generate</h2>
-	<input on:change={uploadSourceAndGenerate} type="file" name="sourceImage">
+	<input on:change={uploadSource} type="file" name="sourceImage">
+	{#if source}
+		<button on:click={generate} disabled={generating}>Generate</button>
+	{/if}
 	<span>
 		<canvas bind:this={sourceImage}></canvas>
 		<canvas bind:this={generatedImage}></canvas>
 	</span>
-	<button on:click={saveGenerator}>Save Generator</button>
 </section>
 
 <style>
@@ -71,5 +93,9 @@
 	button {
 		width: fit-content;
 		padding: 0.5em 1em;
+	}
+		
+	input[type="file"] {
+		cursor: pointer;
 	}
 </style>

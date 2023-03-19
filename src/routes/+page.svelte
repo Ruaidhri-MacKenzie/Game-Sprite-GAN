@@ -1,21 +1,41 @@
 <script>
-	import { imageWidth, imageHeight, imageChannels } from "$lib/stores/data.js";
-	import { generator, discriminator, gan } from "$lib/stores/model.js";
-	import { createGenerator, createDiscriminator, createGan } from "$lib/actions/model.js";
-
+	import { onMount } from "svelte";
 	import Data from "$lib/components/data/data.svelte";
 	import Train from "$lib/components/train/train.svelte";
 	import Generate from "$lib/components/generate.svelte";
+	import { worker, training, step, genLossHistory, discLossHistory } from "$lib/stores/train.js";
 
-	$generator = createGenerator([$imageWidth, $imageHeight, $imageChannels]);
-	$discriminator = createDiscriminator([$imageWidth, $imageHeight, $imageChannels * 2]);
-	$gan = createGan($generator, $discriminator);
+	let steps = 5000;
+
+	let target = null;
+	
+	onMount(() => {
+		$worker = new Worker(new URL("./worker.js", import.meta.url));
+		$worker.addEventListener("message", (event) => {
+			if (event.data.error) {
+				$training = false;
+				console.log(event.data.error);
+			}
+			else if (event.data.success) {
+				$training = false;
+				console.log("Training complete");
+			}
+			else if (event.data.step) {
+				$step = event.data.step;
+				$genLossHistory.push({ x: $step, y: event.data.genLoss });
+				$discLossHistory.push({ x: $step, y: event.data.discLoss });
+			}
+			else if (event.data.target) {
+				target = event.data.target;			
+			}
+		});
+	});
 </script>
 
 <main>
 	<Data />
-	<Train />
-	<Generate />
+	<Train {steps} genLossHistory={$genLossHistory} discLossHistory={$discLossHistory} />
+	<Generate bind:target />
 </main>
 
 <style>
