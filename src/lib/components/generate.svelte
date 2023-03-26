@@ -1,18 +1,9 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
 	import { imageWidth, imageHeight, imageChannels, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
-	import { worker } from "$lib/stores/train.js";
+	import { generator } from "$lib/stores/model.js";
 	
 	let generating = false;
-	
-	export let target;	// Bound
-	$: if (target != null) {
-		target = tf.tensor4d(target, [1, $imageHeight, $imageWidth, $imageChannels]);
-		target = inputToSprite(target);
-		tf.browser.toPixels(target, generatedImage);
-		generating = false;
-	}
-
 	let sourceImage;
 	let generatedImage;
 	let source;
@@ -22,7 +13,10 @@
 		sprite = sprite.div(255 / 2).sub(1);
 
 		// Pad to model input shape
-		sprite = sprite.pad([[0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, $imageChannels - $spriteChannels]], 0);
+		// sprite = sprite.pad([[0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, $imageChannels - $spriteChannels]], 0);
+
+		// Add batch dimension
+		sprite = tf.expandDims(sprite);
 
 		return sprite;
 	};
@@ -54,7 +48,13 @@
 	
 	const generate = async (event) => {
 		generating = true;
-		$worker.postMessage({ source: source.dataSync() });
+		console.log("Generating...");
+		const target = await $generator.predict(source);
+		const targetSprite = inputToSprite(target);
+		// const targetSprite = inputToSprite(source); // Testing sprite -> input/output -> sprite
+		await tf.browser.toPixels(targetSprite, generatedImage);
+		console.log("Generated");
+		generating = false;
 	};
 </script>
 
@@ -62,7 +62,7 @@
 	<h2>Generate</h2>
 	<input on:change={uploadSource} type="file" name="sourceImage">
 	{#if source}
-		<button on:click={generate} disabled={generating}>Generate</button>
+		<button on:click={generate} disabled={!$generator || generating}>Generate</button>
 	{/if}
 	<span>
 		<canvas bind:this={sourceImage}></canvas>

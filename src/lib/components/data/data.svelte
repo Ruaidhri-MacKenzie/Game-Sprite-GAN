@@ -23,6 +23,6 @@
 
 	div {
 		display: flex;
-		flex-wrap: wrap;
+		flex-direction: column;
 	}
 </style>

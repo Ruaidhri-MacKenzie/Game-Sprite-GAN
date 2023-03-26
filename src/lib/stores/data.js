@@ -1,7 +1,7 @@
 import { writable } from "svelte/store";
 
-export const imageWidth = writable(64);
-export const imageHeight = writable(64);
+export const imageWidth = writable(32);
+export const imageHeight = writable(32);
 export const imageChannels = writable(4);
 
 export const spriteWidth = writable(32);
