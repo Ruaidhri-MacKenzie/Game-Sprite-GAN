@@ -1,5 +1,5 @@
 <script>
-	import { dataset } from "$lib/stores/data.js";
+	import { trainData } from "$lib/stores/data.js";
 	
 	import Upload from "./upload.svelte";
 	import Preview from "./preview.svelte";
@@ -9,7 +9,7 @@
 	<h2>Data</h2>
 	<div>
 		<Upload />
-		{#if $dataset}
+		{#if $trainData}
 			<Preview />
 		{/if}
 	</div>

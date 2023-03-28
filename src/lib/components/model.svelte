@@ -59,10 +59,11 @@
 		return discriminator;
 	};
 
-	const generatorLoss = (realInput, fakeOutput) => {
-		const genLoss = tf.losses.binaryCrossEntropy(realInput, fakeOutput);
-		const l1Loss = tf.losses.absoluteDifference(realInput, fakeOutput);
-		const loss = genLoss.add(l1Loss);
+	const generatorLoss = (realOutput, fakeOutput) => {
+		const genLoss = tf.losses.sigmoidCrossEntropy(tf.onesLike(fakeOutput), fakeOutput);
+		const l1Loss = tf.losses.absoluteDifference(realOutput, fakeOutput);
+		const LAMBDA = 100;
+		const loss = genLoss.add(l1Loss.mul(LAMBDA));
 		return loss.mean();
 	};
 
@@ -77,14 +78,16 @@
 		loading = true;
 		
 		$generator = createGenerator();
-		$generator.compile({ optimizer: generatorOptimizer, loss: "binaryCrossentropy" });
+		$generator.compile({ optimizer: generatorOptimizer, loss: "meanSquaredError" });
+		// $generator.compile({ optimizer: generatorOptimizer, loss: "binaryCrossentropy" });
 		// $generator.compile({ optimizer: generatorOptimizer, loss: generatorLoss });
 		// $generator.compile({ optimizer: generatorOptimizer, loss: "binaryCrossentropy", metrics: ["accuracy"] });
 		$generator.summary();
 		
 		$discriminator = createDiscriminator();
-		$discriminator.compile({ optimizer: discriminatorOptimizer, loss: discriminatorLoss });
-		// discriminator.compile({ optimizer: discriminatorOptimizer, loss: "binaryCrossentropy", metrics: ["accuracy"] });
+		$discriminator.compile({ optimizer: discriminatorOptimizer, loss: "binaryCrossentropy" });
+		// $discriminator.compile({ optimizer: discriminatorOptimizer, loss: discriminatorLoss });
+		// $discriminator.compile({ optimizer: discriminatorOptimizer, loss: "binaryCrossentropy", metrics: ["accuracy"] });
 		$discriminator.summary();
 		
 		loading = false;

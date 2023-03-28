@@ -1,28 +1,30 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { dataset, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
+	import { trainData, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
 	import { onMount } from "svelte";
 
 	let sourcePreview;
 	let targetPreview;
-	
 	let previewIndex = 0;
-	
-	$: spritePairCount = $dataset ? $dataset.source.shape[0] : 0;
+	$: spritePairCount = $trainData ? $trainData.source.shape[0] : 0;
 
 	const getSample = (dataset, index) => {
-		let sample = dataset.slice([index, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]);
-		sample = sample.reshape([$spriteHeight, $spriteWidth, $spriteChannels]);
-		sample = sample.add(1).div(2);
-		return sample;
+		return tf.tidy(() => {
+			let sample = dataset.slice([index, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]);
+			sample = sample.reshape([$spriteHeight, $spriteWidth, $spriteChannels]);
+			sample = sample.add(1).div(2);
+			return sample;
+		});
 	};
 
 	const renderPreview = () => {
-		const source = getSample($dataset.source, previewIndex);
-		tf.browser.toPixels(source, sourcePreview);
-
-		const target = getSample($dataset.target, previewIndex);
-		tf.browser.toPixels(target, targetPreview);
+		tf.tidy(() => {
+			const source = getSample($trainData.source, previewIndex);
+			tf.browser.toPixels(source, sourcePreview);
+			
+			const target = getSample($trainData.target, previewIndex);
+			tf.browser.toPixels(target, targetPreview);
+		});
 	};
 
 	const backPreview = () => {
