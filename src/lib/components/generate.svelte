@@ -53,16 +53,12 @@
 	
 	const generate = async (event) => {
 		generating = true;
-		console.log("Generating...");
 		const target = await $generator.predict(source);
 		const targetSprite = inputToSprite(target);
 		// const targetSprite = inputToSprite(source); // Testing sprite -> input/output -> sprite
 		await tf.browser.toPixels(targetSprite, generatedImage);
-		console.log("Generated");
 		generating = false;
-
-		target.dispose();
-		targetSprite.dispose();
+		tf.dispose([target, targetSprite]);
 	};
 </script>
 

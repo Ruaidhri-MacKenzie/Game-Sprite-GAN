@@ -1,15 +1,32 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { trainData, testData, imageWidth, imageHeight, imageChannels } from "$lib/stores/data.js";
+	import { trainData, testData } from "$lib/stores/data.js";
 	import { generator, discriminator } from "$lib/stores/model.js";
 	import { training, epochs, genLossHistory, discLossHistory } from "$lib/stores/train.js";
 	import Linechart from "$lib/components/train/linechart.svelte";
 	
+	let inputShape = [32, 32, 4];
+	let patchShape = [15, 15, 1];
 	let epoch = 0;
 	let step = 0;
 	let stepsPerEpoch = 0;
 	let batchSize = 1;
 	let tensors = 0;
+
+	const trainGenerator = async (genOutput, genLabel) => {
+		const loss = await $generator.trainOnBatch(genOutput, genLabel);
+		return loss;
+	};
+
+	const trainDiscriminator = async (input, labels) => {
+		const loss = await $discriminator.trainOnBatch(input, labels);
+		return loss;
+	};
+
+	const generateImage = async (source) => {
+		const target = await $generator.predict(source);
+		return target;
+	};
 
 	const trainModel = async (event) => {
 		$training = true;
@@ -21,37 +38,34 @@
 		// Train the models
 		for (let i = 0; i < $epochs; i++) {
 			epoch = i;
-			console.log(`Epoch ${epoch + 1}/${$epochs} - Time taken: ${((Date.now() - start) / 1000).toFixed(2)}sec`);
+			tensors = tf.memory().numTensors;
 			start = Date.now();
 
 			for (let j = 0; j < stepsPerEpoch; j++) {
 				step = j;
-				tensors = tf.memory().numTensors;
 
-				const realInput = $trainData.source.slice([step, 0, 0, 0], [1, $imageHeight, $imageWidth, $imageChannels]);
-				const realOutput = $trainData.target.slice([step, 0, 0, 0], [1, $imageHeight, $imageWidth, $imageChannels]);
-				const fakeOutput = await $generator.predict(realInput);
-				
+				const realLabel = tf.ones([batchSize, ...patchShape]);
+				const fakeLabel = tf.zeros([batchSize, ...patchShape]);
+				const realInput = $trainData.source.slice([step, 0, 0, 0], [1, ...inputShape]);
+				const realOutput = $trainData.target.slice([step, 0, 0, 0], [1, ...inputShape]);
+				const fakeOutput = await generateImage(realInput);
+
 				// Train the discriminator
-				const onesLabel = tf.ones([batchSize, 15, 15, 1]);
-				const zerosLabel = tf.zeros([batchSize, 15, 15, 1]);
-				const realLoss = await $discriminator.trainOnBatch([realInput, realOutput], onesLabel);
-				const fakeLoss = await $discriminator.trainOnBatch([realInput, fakeOutput], zerosLabel);
+				const realLoss = await trainDiscriminator([realInput, realOutput], realLabel);
+				const fakeLoss = await trainDiscriminator([realInput, fakeOutput], fakeLabel);
 				const discriminatorLoss = realLoss + fakeLoss;
 
 				// Train the generator
-				const generatorLoss = await $generator.trainOnBatch(realInput, realOutput);
-				// const generatorLoss = await $generator.trainOnBatch(fakeOutput, tf.onesLike(fakeOutput));
+				const generatorLoss = await trainGenerator(realInput, realOutput);
 
-				console.log(`Epoch: ${epoch + 1}/${$epochs} - ${step + 1}/${stepsPerEpoch} - Discriminator loss: ${discriminatorLoss.toFixed(4)}, Generator loss: ${generatorLoss.toFixed(4)}`);
-				genLossHistory.update(current => [...current, { x: (epoch * stepsPerEpoch) + step, y: generatorLoss}]);
-				discLossHistory.update(current => [...current, { x: (epoch * stepsPerEpoch) + step, y: discriminatorLoss}]);
-
-				realInput.dispose();
-				realOutput.dispose();
-				fakeOutput.dispose();
-				onesLabel.dispose();
-				zerosLabel.dispose();
+				// Epoch Report
+				if (step === stepsPerEpoch - 1) {
+					console.log(`Epoch: ${epoch + 1}/${$epochs} - Time taken: ${((Date.now() - start) / 1000).toFixed(2)}sec - Discriminator loss: ${discriminatorLoss.toFixed(4)}, Generator loss: ${generatorLoss.toFixed(4)}`);
+					// genLossHistory.update(current => [...current, { x: epoch, y: generatorLoss}]);
+					// discLossHistory.update(current => [...current, { x: epoch, y: discriminatorLoss}]);
+				}
+				
+				tf.dispose([realInput, realOutput, fakeOutput, realLabel, fakeLabel]);
 			}
 		}
 
@@ -64,19 +78,23 @@
 	<h2>Train</h2>
 	{#if $training}
 		<p>Training...</p>
-		<p>Tensors: {tensors}</p>
+		<p>Active Tensors: {tensors}</p>
 		<p>Epoch: {epoch + 1}/{$epochs}, Step: {step + 1}/{stepsPerEpoch}</p>
 	{:else}
+		<label>
+			<p>Epochs:</p>
+			<input bind:value={$epochs} type="number" min={1} />
+		</label>
 		<button disabled={!$trainData} on:click={trainModel}>Train</button>
 	{/if}
 
 	{#if $genLossHistory && $genLossHistory.length}
-		<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Step" yLabel="Generator Loss"/>
+		<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Epoch" yLabel="Generator Loss" />
 	{/if}
 
 	{#if $discLossHistory && $discLossHistory.length}
-		<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Step" yLabel="Discriminator Loss"/>
-	{/if}	
+		<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Epoch" yLabel="Discriminator Loss" />
+	{/if}
 </section>
 
 <style>
@@ -90,5 +108,15 @@
 	button {
 		width: fit-content;
 		padding: 0.5em 1em;
+	}
+
+	label {
+		display: flex;
+		align-items: center;
+		gap: 1em;
+	}
+
+	input {
+		width: 7ch;
 	}
 </style>

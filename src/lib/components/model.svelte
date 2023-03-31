@@ -1,11 +1,14 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
+	import * as tfvis from "@tensorflow/tfjs-vis";
 	import { imageWidth, imageHeight, imageChannels } from "$lib/stores/data.js";
 	import { generator, discriminator } from "$lib/stores/model.js";
 
 	const generatorOptimizer = tf.train.adam(0.0002);
 	const discriminatorOptimizer = tf.train.adam(0.0002);
-	
+
+	let genSummary;
+	let discSummary;
 	let loading = false;
 	$: status = (loading) ? "loading..." : ($generator && $discriminator) ? "✓" : "X";
 
@@ -82,13 +85,15 @@
 		// $generator.compile({ optimizer: generatorOptimizer, loss: "binaryCrossentropy" });
 		// $generator.compile({ optimizer: generatorOptimizer, loss: generatorLoss });
 		// $generator.compile({ optimizer: generatorOptimizer, loss: "binaryCrossentropy", metrics: ["accuracy"] });
-		$generator.summary();
+		tfvis.show.modelSummary(genSummary, $generator);
+		// $generator.summary();
 		
 		$discriminator = createDiscriminator();
 		$discriminator.compile({ optimizer: discriminatorOptimizer, loss: "binaryCrossentropy" });
 		// $discriminator.compile({ optimizer: discriminatorOptimizer, loss: discriminatorLoss });
 		// $discriminator.compile({ optimizer: discriminatorOptimizer, loss: "binaryCrossentropy", metrics: ["accuracy"] });
-		$discriminator.summary();
+		tfvis.show.modelSummary(discSummary, $discriminator);
+		// $discriminator.summary();
 		
 		loading = false;
 	};
@@ -106,9 +111,15 @@
 <section>
 	<h2>Model</h2>
 	<button on:click={createModels}>Create Models</button>
-	<button on:click={saveModels}>Save Models</button>
-	<p>Generator: <span class:active={$generator}>{status}</span></p>
-	<p>Discriminator: <span class:active={$discriminator}>{status}</span></p>
+	{#if $generator && $discriminator}
+		<button on:click={saveModels}>Save Models</button>
+	{/if}
+	<details bind:this={genSummary}>
+		<summary>Generator: <span class:active={$generator}>{status}</span></summary>
+	</details>
+	<details bind:this={discSummary}>
+		<summary>Discriminator: <span class:active={$discriminator}>{status}</span></summary>
+	</details>
 </section>
 
 <style>
