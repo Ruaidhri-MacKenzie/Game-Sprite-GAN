@@ -1,6 +1,8 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { trainData, testData, imageWidth, imageHeight, imageChannels, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
+	import { trainData, testData, trainTestSplit, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
+	import { inputShape } from "$lib/stores/model.js";
+	import { getBatch, imageToSprite, splitSpritesheet } from "$lib/utils/data.utils.js";
 
 	let spritesheet;
 	$: spritesheetShape = (spritesheet) ? spritesheet.shape : null;
@@ -15,13 +17,7 @@
 	let loadingData = false;
 
 	const onUploadSpritesheet = async (event) => {
-		const image = new Image();
-		image.src = URL.createObjectURL(event.target.files[0]);
-    await new Promise((resolve, reject) => {
-			image.onload = () => resolve(image);
-			image.onerror = reject;
-    });
-		spritesheet = tf.browser.fromPixels(image, $spriteChannels);
+		spritesheet = await imageToSprite(URL.createObjectURL(event.target.files[0]), $spriteChannels);
 	};
 
 	const applyBatchJitter = ({ source, target }) => {
@@ -65,17 +61,14 @@
 		// Normalise values = [-1, 1] to match tanh output of generator
 		sprites = spritesheet.div(255 / 2).sub(1);
 
-		// Split into tensor of individual images
-		const spriteCount = sprites.shape[1] / $spriteWidth;
-		sprites = sprites.reshape([$spriteHeight, spriteCount, $spriteWidth, $spriteChannels]);
-		sprites = sprites.transpose([1, 0, 2, 3]);
-		sprites = sprites.reshape([spriteCount, $spriteHeight, $spriteWidth, $spriteChannels]);
+		// Split into tensor of individual images (3d tensor to 4d tensor)
+		sprites = splitSpritesheet(sprites, [$spriteHeight, $spriteWidth, $spriteChannels]);
 
 		// Pad image to input shape
-		// sprites = sprites.pad([[0, 0], [0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, $imageChannels - $spriteChannels]], 0);
+		sprites = sprites.pad([[0, 0], [0, $inputShape[0] - $spriteHeight], [0, $inputShape[1] - $spriteWidth], [0, $inputShape[2] - $spriteChannels]], 0);
 
 		// Crop image to input shape
-		// sprites.slice([0, 0, 0, 0], [-1, $imageHeight, $imageWidth, $imageChannels]);
+		sprites.slice([0, 0, 0, 0], [-1, ...$inputShape]);
 
 		// Split into arrays of source and target images
 		const evenIndices = Array(sprites.shape[0]).fill(0).map((value, index) => index % 2 === 0 ? index : null).filter(value => value != null);
@@ -84,15 +77,18 @@
 
 		// const generatedData = applyBatchJitter(data);
 		
-		// Split into test and train datasets, last 3 sprites are for testing
+		// Split into test and train datasets
+		const pairCount = data.source.shape[0];
+		const testCount = Math.floor(pairCount * (1 - $trainTestSplit));
+
 		$trainData = {
-			source: data.source.slice([0, 0, 0, 0], [data.source.shape[0] - 3, -1, -1, -1]),
-			target: data.target.slice([0, 0, 0, 0], [data.source.shape[0] - 3, -1, -1, -1]),
+			source: getBatch(data.source, $inputShape, 0, pairCount - testCount),
+			target: getBatch(data.target, $inputShape, 0, pairCount - testCount),
 		};
 		
 		$testData = {
-			source: data.source.slice([data.source.shape[0] - 3, 0, 0, 0], [-1, -1, -1, -1]),
-			target: data.target.slice([data.source.shape[0] - 3, 0, 0, 0], [-1, -1, -1, -1]),
+			source: getBatch(data.source, $inputShape, pairCount - testCount, testCount),
+			target: getBatch(data.target, $inputShape, pairCount - testCount, testCount),
 		};
 
 		loadingData = false;

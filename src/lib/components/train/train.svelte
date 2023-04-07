@@ -1,75 +1,91 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { trainData, testData } from "$lib/stores/data.js";
-	import { generator, discriminator } from "$lib/stores/model.js";
-	import { training, epochs, genLossHistory, discLossHistory } from "$lib/stores/train.js";
+	import { trainData, testData, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
+	import { generator, discriminator, gan, inputShape, patchShape } from "$lib/stores/model.js";
+	import { training, epochs, genLossHistory, discLossHistory, epochLog } from "$lib/stores/train.js";
+	import { getBatch, outputToSprite, spriteToImage } from "$lib/utils/data.utils.js";
 	import Linechart from "$lib/components/train/linechart.svelte";
+	import EpochReport from "$lib/components/train/epoch-report.svelte";
+	import EpochTest from "$lib/components/train/epoch-test.svelte";
 	
-	let inputShape = [32, 32, 4];
-	let patchShape = [15, 15, 1];
 	let epoch = 0;
 	let step = 0;
 	let stepsPerEpoch = 0;
 	let batchSize = 1;
 	let tensors = 0;
-
-	const trainGenerator = async (genOutput, genLabel) => {
-		const loss = await $generator.trainOnBatch(genOutput, genLabel);
-		return loss;
-	};
-
-	const trainDiscriminator = async (input, labels) => {
-		const loss = await $discriminator.trainOnBatch(input, labels);
-		return loss;
-	};
-
-	const generateImage = async (source) => {
-		const target = await $generator.predict(source);
-		return target;
-	};
+	let epochTests = [];
 
 	const trainModel = async (event) => {
 		$training = true;
-		console.log("Training...");
+		epochLog.reset();
 
 		stepsPerEpoch = $trainData.source.shape[0];
-		let start = Date.now();
+		let startTime = Date.now();
+		const testInputs = [
+			getBatch($trainData.source, $inputShape, 0, 1),
+			getBatch($testData.source, $inputShape, 0, 1),
+			getBatch($testData.source, $inputShape, 1, 1),
+			getBatch($testData.source, $inputShape, 2, 1),
+		];
 
 		// Train the models
 		for (let i = 0; i < $epochs; i++) {
 			epoch = i;
 			tensors = tf.memory().numTensors;
-			start = Date.now();
+			startTime = Date.now();
 
 			for (let j = 0; j < stepsPerEpoch; j++) {
 				step = j;
 
-				const realLabel = tf.ones([batchSize, ...patchShape]);
-				const fakeLabel = tf.zeros([batchSize, ...patchShape]);
-				const realInput = $trainData.source.slice([step, 0, 0, 0], [1, ...inputShape]);
-				const realOutput = $trainData.target.slice([step, 0, 0, 0], [1, ...inputShape]);
-				const fakeOutput = await generateImage(realInput);
+				const realLabel = tf.ones([batchSize, ...$patchShape]);
+				const fakeLabel = tf.zeros([batchSize, ...$patchShape]);
+				const realInput = getBatch($trainData.source, $inputShape, step, batchSize);
+				const realOutput = getBatch($trainData.target, $inputShape, step, batchSize);
+				const fakeOutput = await $generator.predict(realInput);
 
 				// Train the discriminator
-				const realLoss = await trainDiscriminator([realInput, realOutput], realLabel);
-				const fakeLoss = await trainDiscriminator([realInput, fakeOutput], fakeLabel);
+				const [realLoss, fakeLoss] = await Promise.all([
+					$discriminator.trainOnBatch([realInput, realOutput], realLabel),
+					$discriminator.trainOnBatch([realInput, fakeOutput], fakeLabel),
+				]);
 				const discriminatorLoss = realLoss + fakeLoss;
 
 				// Train the generator
-				const generatorLoss = await trainGenerator(realInput, realOutput);
-
+				$discriminator.trainable = false;
+				const generatorLoss = await $gan.trainOnBatch(realInput, realLabel);
+				$discriminator.trainable = true;
+				
 				// Epoch Report
 				if (step === stepsPerEpoch - 1) {
-					console.log(`Epoch: ${epoch + 1}/${$epochs} - Time taken: ${((Date.now() - start) / 1000).toFixed(2)}sec - Discriminator loss: ${discriminatorLoss.toFixed(4)}, Generator loss: ${generatorLoss.toFixed(4)}`);
-					// genLossHistory.update(current => [...current, { x: epoch, y: generatorLoss}]);
-					// discLossHistory.update(current => [...current, { x: epoch, y: discriminatorLoss}]);
+					const epochTime = ((Date.now() - startTime) / 1000);
+					const epochReport = `${epoch + 1}/${$epochs}: ${epochTime.toFixed(2)}sec - Discriminator loss: ${discriminatorLoss.toFixed(4)}, Generator loss: ${generatorLoss.toFixed(4)}`;
+					console.log(epochReport);
+					epochLog.addEntry(epochReport);
+					genLossHistory.addLoss(epoch + 1, generatorLoss);
+					discLossHistory.addLoss(epoch + 1, discriminatorLoss);
+					
+					// Generate outputs for test data
+					const testOutputs = await Promise.all(testInputs.map(testInput => {
+						return $generator.predict(testInput);
+					}));
+
+					// Convert tensors to canvases
+					const testImages = testOutputs.map(async (testOutput) => {
+						const sprite = outputToSprite(testOutput, [$spriteHeight, $spriteWidth, $spriteChannels]);
+						const image = await spriteToImage(sprite);
+						tf.dispose([testOutput, sprite]);
+						return image;
+					});
+
+					// Update test images list
+					epochTests = [...epochTests, testImages];
 				}
 				
 				tf.dispose([realInput, realOutput, fakeOutput, realLabel, fakeLabel]);
 			}
 		}
 
-		console.log("Training complete");
+		epochLog.addEntry("Training complete");
 		$training = false;
 	};
 </script>
@@ -88,13 +104,10 @@
 		<button disabled={!$trainData} on:click={trainModel}>Train</button>
 	{/if}
 
-	{#if $genLossHistory && $genLossHistory.length}
-		<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Epoch" yLabel="Generator Loss" />
-	{/if}
-
-	{#if $discLossHistory && $discLossHistory.length}
-		<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Epoch" yLabel="Discriminator Loss" />
-	{/if}
+	<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Epoch" yLabel="Generator Loss" />
+	<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Epoch" yLabel="Discriminator Loss" />
+	<EpochReport log={$epochLog} />
+	<EpochTest tests={epochTests} />
 </section>
 
 <style>

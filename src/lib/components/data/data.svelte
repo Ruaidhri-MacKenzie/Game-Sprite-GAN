@@ -1,6 +1,5 @@
 <script>
 	import { trainData } from "$lib/stores/data.js";
-	
 	import Upload from "./upload.svelte";
 	import Preview from "./preview.svelte";
 </script>

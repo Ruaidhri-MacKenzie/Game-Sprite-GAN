@@ -5,19 +5,21 @@
 	export let name;
 	export let xLabel;
 	export let yLabel;
+	export let xType = "ordinal";
+	export let yType = "quantitative";
 	export let zoomToFit = true;
 	export let width = 600;
 	export let height = 300;
 	export let fontSize = 12;
+
 	let chart;
 
 	$: if (chart && values) {
 		tfvis.render.linechart(chart, { values, series: [name] }, {
+			xLabel, yLabel,
+			xType, yType,
+			width, height,
 			zoomToFit,
-			xLabel,
-			yLabel,
-			width,
-			height,
 			fontSize,
 		});
 	}

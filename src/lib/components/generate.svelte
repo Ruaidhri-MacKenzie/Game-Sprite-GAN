@@ -1,64 +1,34 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { imageWidth, imageHeight, imageChannels, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
-	import { generator } from "$lib/stores/model.js";
+	import { spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
+	import { generator, inputShape } from "$lib/stores/model.js";
+	import { imageToSprite, spriteToInput, outputToSprite } from "$lib/utils/data.utils.js";
 	
 	let generating = false;
 	let sourceImage;
 	let generatedImage;
 	let source;
-
-	const spriteToInput = (sprite) => {
-		return tf.tidy(() => {
-			// Normalise values to [-1,1]
-			sprite = sprite.div(255 / 2).sub(1);
-	
-			// Pad to model input shape
-			// sprite = sprite.pad([[0, $imageHeight - $spriteHeight], [0, $imageWidth - $spriteWidth], [0, $imageChannels - $spriteChannels]], 0);
-	
-			// Add batch dimension
-			sprite = tf.expandDims(sprite);
-	
-			return sprite;
-		});
-	};
-
-	const inputToSprite = (input) => {
-		return tf.tidy(() => {
-			// Crop to sprite shape
-			input = input.slice([0, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]);
-			
-			// Remove batch dimension
-			input = input.squeeze();
-			
-			// Normalise values to [0,1]
-			input = input.add(1).div(2);
-	
-			return input;
-		});
-	};
+	let white = false;
 
 	const uploadSource = async (event) => {
-		const image = new Image();
-		image.src = URL.createObjectURL(event.target.files[0]);
-    await new Promise((resolve, reject) => {
-			image.onload = () => resolve(image);
-			image.onerror = reject;
-    });
-		const sprite = tf.browser.fromPixels(image, $spriteChannels);
+		const sprite = await imageToSprite(URL.createObjectURL(event.target.files[0]), $spriteChannels);
 		await tf.browser.toPixels(sprite, sourceImage);
-		source = spriteToInput(sprite);
+		source = spriteToInput(sprite, $inputShape);
 		sprite.dispose();
 	};
 	
 	const generate = async (event) => {
 		generating = true;
 		const target = await $generator.predict(source);
-		const targetSprite = inputToSprite(target);
-		// const targetSprite = inputToSprite(source); // Testing sprite -> input/output -> sprite
+		const targetSprite = outputToSprite(target, [$spriteHeight, $spriteWidth, $spriteChannels]);
+		// const targetSprite = outputToSprite(source, [$spriteHeight, $spriteWidth, $spriteChannels]); // Testing sprite -> input/output -> sprite
 		await tf.browser.toPixels(targetSprite, generatedImage);
-		generating = false;
 		tf.dispose([target, targetSprite]);
+		generating = false;
+	};
+	
+	const toggleBackground = (event) => {
+		white = !white;
 	};
 </script>
 
@@ -67,10 +37,11 @@
 	<input on:change={uploadSource} type="file" name="sourceImage">
 	{#if source}
 		<button on:click={generate} disabled={!$generator || generating}>Generate</button>
+		<button on:click={toggleBackground}>Toggle Background</button>
 	{/if}
 	<span>
-		<canvas bind:this={sourceImage}></canvas>
-		<canvas bind:this={generatedImage}></canvas>
+		<canvas class:white bind:this={sourceImage}></canvas>
+		<canvas class:white bind:this={generatedImage}></canvas>
 	</span>
 </section>
 
@@ -92,6 +63,10 @@
 		background-color: black;
 		width: 64px;
 		height: 64px;
+	}
+
+	canvas.white {
+		background-color: white;
 	}
 
 	button {

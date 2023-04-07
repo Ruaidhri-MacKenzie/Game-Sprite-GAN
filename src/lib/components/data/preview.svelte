@@ -1,28 +1,21 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { trainData, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
 	import { onMount } from "svelte";
+	import { trainData, spriteHeight, spriteWidth, spriteChannels } from "$lib/stores/data.js";
+	import { inputShape } from "$lib/stores/model.js";
+	import { getSample, outputToSprite } from "$lib/utils/data.utils.js";
 
 	let sourcePreview;
 	let targetPreview;
 	let previewIndex = 0;
 	$: spritePairCount = $trainData ? $trainData.source.shape[0] : 0;
 
-	const getSample = (dataset, index) => {
-		return tf.tidy(() => {
-			let sample = dataset.slice([index, 0, 0, 0], [1, $spriteHeight, $spriteWidth, $spriteChannels]);
-			sample = sample.reshape([$spriteHeight, $spriteWidth, $spriteChannels]);
-			sample = sample.add(1).div(2);
-			return sample;
-		});
-	};
-
 	const renderPreview = () => {
 		tf.tidy(() => {
-			const source = getSample($trainData.source, previewIndex);
+			const source = outputToSprite(getSample($trainData.source, $inputShape, previewIndex), [$spriteHeight, $spriteWidth, $spriteChannels]);
 			tf.browser.toPixels(source, sourcePreview);
 			
-			const target = getSample($trainData.target, previewIndex);
+			const target = outputToSprite(getSample($trainData.target, $inputShape, previewIndex), [$spriteHeight, $spriteWidth, $spriteChannels]);
 			tf.browser.toPixels(target, targetPreview);
 		});
 	};
@@ -32,6 +25,7 @@
 		else previewIndex = spritePairCount - 1;
 		renderPreview();
 	};
+	
 	const nextPreview = () => {
 		if (previewIndex + 1 < spritePairCount) previewIndex += 1;
 		else previewIndex = 0;

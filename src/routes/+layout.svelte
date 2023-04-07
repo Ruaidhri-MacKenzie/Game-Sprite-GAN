@@ -4,7 +4,7 @@
 
 <div>
 	<header>
-		<h1>Game Sprite GAN</h1>
+		<h1>spriteGAN.js</h1>
 	</header>
 	
 	<slot />
