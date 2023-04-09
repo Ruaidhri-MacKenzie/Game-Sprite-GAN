@@ -2,7 +2,9 @@
 	import { beforeUpdate, afterUpdate } from "svelte";
 	
 	export let log = [];
-	
+	export let step = 0;
+	export let steps = 0;
+
 	let list;
 	let autoScroll = true;
 
@@ -14,9 +16,9 @@
 		if (list && autoScroll) list.scrollTop = list.scrollHeight;
 	});
 </script>
-
 <div>
 	<h3>Epoch Report</h3>
+	<progress value={step} max={steps}></progress>
 	<ul bind:this={list}>
 		{#each log as report}
 			<li>{report}</li>
@@ -26,7 +28,7 @@
 
 <style>
 	ul {
-		max-height: 20em;
+		height: 9em;
 		overflow-y: scroll;
 		list-style-type: none;
 	}

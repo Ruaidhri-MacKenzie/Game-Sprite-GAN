@@ -13,6 +13,8 @@
 	let stepsPerEpoch = 0;
 	let batchSize = 1;
 	let tensors = 0;
+	let testSources = [];
+	let testTargets = [];
 	let epochTests = [];
 
 	const trainModel = async (event) => {
@@ -27,6 +29,43 @@
 			getBatch($testData.source, $inputShape, 1, 1),
 			getBatch($testData.source, $inputShape, 2, 1),
 		];
+
+		const testOutputs = [
+			getBatch($trainData.target, $inputShape, 0, 1),
+			getBatch($testData.target, $inputShape, 0, 1),
+			getBatch($testData.target, $inputShape, 1, 1),
+			getBatch($testData.target, $inputShape, 2, 1),
+		];
+
+		testSources = await Promise.all(testInputs.map(async (input) => {
+			const sprite = outputToSprite(input, [$spriteHeight, $spriteWidth, $spriteChannels]);
+			const image = await spriteToImage(sprite);
+			sprite.dispose();
+			return image;
+		}));
+
+		testTargets = await Promise.all(testOutputs.map(async (output) => {
+			const sprite = outputToSprite(output, [$spriteHeight, $spriteWidth, $spriteChannels]);
+			const image = await spriteToImage(sprite);
+			sprite.dispose();
+			return image;
+		}));
+
+		// Generate outputs for test data
+		const testGenOutputs = await Promise.all(testInputs.map(testInput => {
+			return $generator.predict(testInput);
+		}));
+
+		// Convert tensors to images
+		const testImages = await Promise.all(testGenOutputs.map(async (testOutput) => {
+			const sprite = outputToSprite(testOutput, [$spriteHeight, $spriteWidth, $spriteChannels]);
+			const image = await spriteToImage(sprite);
+			tf.dispose([testOutput, sprite]);
+			return image;
+		}));
+
+		// Update test images list
+		epochTests = [testImages];
 
 		// Train the models
 		for (let i = 0; i < $epochs; i++) {
@@ -69,16 +108,16 @@
 						return $generator.predict(testInput);
 					}));
 
-					// Convert tensors to canvases
-					const testImages = testOutputs.map(async (testOutput) => {
+					// Convert tensors to images
+					const testImages = await Promise.all(testOutputs.map(async (testOutput) => {
 						const sprite = outputToSprite(testOutput, [$spriteHeight, $spriteWidth, $spriteChannels]);
 						const image = await spriteToImage(sprite);
 						tf.dispose([testOutput, sprite]);
 						return image;
-					});
+					}));
 
 					// Update test images list
-					epochTests = [...epochTests, testImages];
+					epochTests = [testImages, ...epochTests];
 				}
 				
 				tf.dispose([realInput, realOutput, fakeOutput, realLabel, fakeLabel]);
@@ -106,8 +145,8 @@
 
 	<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Epoch" yLabel="Generator Loss" />
 	<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Epoch" yLabel="Discriminator Loss" />
-	<EpochReport log={$epochLog} />
-	<EpochTest tests={epochTests} />
+	<EpochReport log={$epochLog} step={step} steps={stepsPerEpoch} />
+	<EpochTest sources={testSources} targets={testTargets} tests={epochTests} />
 </section>
 
 <style>

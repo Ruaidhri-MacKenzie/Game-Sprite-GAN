@@ -61,8 +61,14 @@ export const spriteToImage = async (sprite) => {
 	canvas.height = sprite.shape[0];
 	await tf.browser.toPixels(sprite, canvas);
 	sprite.dispose();
-	const imageURL = canvas.toDataURL();
-	return imageURL;
+	// const image = new Image();
+	// image.src = canvas.toDataURL();
+	// await new Promise((resolve, reject) => {
+	// 	image.onload = () => resolve(image);
+	// 	image.onerror = reject;
+	// });
+	// return image;
+	return canvas.toDataURL();
 };
 
 export const splitSpritesheet = (sprites, spriteShape) => {
