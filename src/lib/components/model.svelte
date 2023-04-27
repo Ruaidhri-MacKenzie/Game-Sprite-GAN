@@ -14,6 +14,8 @@
 		loading = true;
 		
 		$generator = createGenerator($inputShape);
+		$generator.compile({ optimizer: tf.train.adam($genLearningRate), loss: "meanAbsoluteError" });
+
 		$discriminator = createDiscriminator($inputShape);
 		$discriminator.compile({ optimizer: tf.train.adam($discLearningRate), loss: "binaryCrossentropy" });
 		

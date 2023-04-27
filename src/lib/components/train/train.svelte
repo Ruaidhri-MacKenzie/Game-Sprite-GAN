@@ -17,12 +17,36 @@
 	let testTargets = [];
 	let epochTests = [];
 
+	const epochReportToString = (report) => {
+		return `${report.epoch}/${report.epochs}: ${report.time.toFixed(2)}sec | Generator loss: ${report.generatorLoss.toFixed(4)} - Discriminator loss: ${report.discriminatorLoss.toFixed(4)}`;
+	};
+
+	const printEpochReport = (report) => {
+		console.log(epochReportToString(report));
+	};
+
+	const generateFromList = async (list) => {
+		return await Promise.all(list.map(async (input) => {
+			return await $generator.predict(input);
+		}));
+	};
+
+	const outputsToImages = async (outputs, imageShape) => {
+		return await Promise.all(outputs.map(async (output) => {
+			const sprite = outputToSprite(output, imageShape);
+			const image = await spriteToImage(sprite);
+			sprite.dispose();
+			return image;
+		}));
+	};
+
 	const trainModel = async (event) => {
 		$training = true;
 		epochLog.reset();
-
 		stepsPerEpoch = $trainData.source.shape[0];
 		let startTime = Date.now();
+		
+		// Create list of source inputs for testing
 		const testInputs = [
 			getBatch($trainData.source, $inputShape, 0, 1),
 			getBatch($testData.source, $inputShape, 0, 1),
@@ -30,6 +54,7 @@
 			getBatch($testData.source, $inputShape, 2, 1),
 		];
 
+		// Create list of target outputs for testing
 		const testOutputs = [
 			getBatch($trainData.target, $inputShape, 0, 1),
 			getBatch($testData.target, $inputShape, 0, 1),
@@ -37,32 +62,19 @@
 			getBatch($testData.target, $inputShape, 2, 1),
 		];
 
-		testSources = await Promise.all(testInputs.map(async (input) => {
-			const sprite = outputToSprite(input, [$spriteHeight, $spriteWidth, $spriteChannels]);
-			const image = await spriteToImage(sprite);
-			sprite.dispose();
-			return image;
-		}));
-
-		testTargets = await Promise.all(testOutputs.map(async (output) => {
-			const sprite = outputToSprite(output, [$spriteHeight, $spriteWidth, $spriteChannels]);
-			const image = await spriteToImage(sprite);
-			sprite.dispose();
-			return image;
-		}));
-
 		// Generate outputs for test data
-		const testGenOutputs = await Promise.all(testInputs.map(testInput => {
-			return $generator.predict(testInput);
-		}));
+		const testGenOutputs = await generateFromList(testInputs);
 
-		// Convert tensors to images
-		const testImages = await Promise.all(testGenOutputs.map(async (testOutput) => {
-			const sprite = outputToSprite(testOutput, [$spriteHeight, $spriteWidth, $spriteChannels]);
-			const image = await spriteToImage(sprite);
-			tf.dispose([testOutput, sprite]);
-			return image;
-		}));
+		const spriteShape = [$spriteHeight, $spriteWidth, $spriteChannels];
+
+		// Convert source inputs to images
+		testSources = await outputsToImages(testInputs, spriteShape);
+
+		// Convert target outputs to images
+		testTargets = await outputsToImages(testOutputs, spriteShape);
+
+		// Convert generated outputs to images
+		const testImages = await outputsToImages(testGenOutputs, spriteShape);
 
 		// Update test images list
 		epochTests = [testImages];
@@ -76,6 +88,7 @@
 			for (let j = 0; j < stepsPerEpoch; j++) {
 				step = j;
 
+				// Prepare training data
 				const realLabel = tf.ones([batchSize, ...$patchShape]);
 				const fakeLabel = tf.zeros([batchSize, ...$patchShape]);
 				const realInput = getBatch($trainData.source, $inputShape, step, batchSize);
@@ -83,40 +96,46 @@
 				const fakeOutput = await $generator.predict(realInput);
 
 				// Train the discriminator
-				const [realLoss, fakeLoss] = await Promise.all([
-					$discriminator.trainOnBatch([realInput, realOutput], realLabel),
-					$discriminator.trainOnBatch([realInput, fakeOutput], fakeLabel),
-				]);
+				// const [realLoss, fakeLoss] = await Promise.all([
+				// 	$discriminator.trainOnBatch([realInput, realOutput], realLabel),
+				// 	$discriminator.trainOnBatch([realInput, fakeOutput], fakeLabel),
+				// ]);
+				const realLoss = await $discriminator.trainOnBatch([realInput, realOutput], realLabel);
+				const fakeLoss = await $discriminator.trainOnBatch([realInput, fakeOutput], fakeLabel);
 				const discriminatorLoss = realLoss + fakeLoss;
 
 				// Train the generator
 				$discriminator.trainable = false;
-				const generatorLoss = await $gan.trainOnBatch(realInput, realLabel);
+				const [ganLoss, l1Loss] = await Promise.all([
+					$gan.trainOnBatch(realInput, realLabel),
+					$generator.trainOnBatch(fakeOutput, realOutput),
+				]);
+				// const ganLoss = await $gan.trainOnBatch(realInput, realLabel);
+				// const l1Loss = await $generator.trainOnBatch(fakeOutput, realOutput);
+				const generatorLoss = ganLoss + l1Loss;
 				$discriminator.trainable = true;
 				
-				// Epoch Report
+				// End of Epoch
 				if (step === stepsPerEpoch - 1) {
-					const epochTime = ((Date.now() - startTime) / 1000);
-					const epochReport = `${epoch + 1}/${$epochs}: ${epochTime.toFixed(2)}sec - Discriminator loss: ${discriminatorLoss.toFixed(4)}, Generator loss: ${generatorLoss.toFixed(4)}`;
-					console.log(epochReport);
-					epochLog.addEntry(epochReport);
+					// Epoch Report
+					const epochReport = {
+						epoch: epoch + 1,
+						epochs: $epochs,
+						time: ((Date.now() - startTime) / 1000),
+						generatorLoss,
+						discriminatorLoss,
+					};
+					printEpochReport(epochReport);
+					epochLog.addEntry(epochReportToString(epochReport));
+
+					// Loss History
 					genLossHistory.addLoss(epoch + 1, generatorLoss);
 					discLossHistory.addLoss(epoch + 1, discriminatorLoss);
 					
-					// Generate outputs for test data
-					const testOutputs = await Promise.all(testInputs.map(testInput => {
-						return $generator.predict(testInput);
-					}));
-
-					// Convert tensors to images
-					const testImages = await Promise.all(testOutputs.map(async (testOutput) => {
-						const sprite = outputToSprite(testOutput, [$spriteHeight, $spriteWidth, $spriteChannels]);
-						const image = await spriteToImage(sprite);
-						tf.dispose([testOutput, sprite]);
-						return image;
-					}));
-
-					// Update test images list
+					// Generate test images
+					const epochTestOutputs = await generateFromList(testInputs);
+					const testImages = await outputsToImages(epochTestOutputs, spriteShape);
+					tf.dispose(epochTestOutputs);
 					epochTests = [testImages, ...epochTests];
 				}
 				
@@ -124,6 +143,7 @@
 			}
 		}
 
+		tf.dispose([testInputs, testOutputs, testGenOutputs]);
 		epochLog.addEntry("Training complete");
 		$training = false;
 	};

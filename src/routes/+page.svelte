@@ -1,6 +1,7 @@
 <script>
 	import Data from "$lib/components/data/data.svelte";
 	import Model from "$lib/components/model.svelte";
+	import Pretrain from "$lib/components/pretrain.svelte";
 	import Train from "$lib/components/train/train.svelte";
 	import Generate from "$lib/components/generate.svelte";
 </script>
@@ -8,6 +9,7 @@
 <main>
 	<Data />
 	<Model />
+	<Pretrain />
 	<Train />
 	<Generate />
 </main>

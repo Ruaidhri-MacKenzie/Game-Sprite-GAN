@@ -61,14 +61,11 @@ export const spriteToImage = async (sprite) => {
 	canvas.height = sprite.shape[0];
 	await tf.browser.toPixels(sprite, canvas);
 	sprite.dispose();
-	// const image = new Image();
-	// image.src = canvas.toDataURL();
-	// await new Promise((resolve, reject) => {
-	// 	image.onload = () => resolve(image);
-	// 	image.onerror = reject;
-	// });
-	// return image;
 	return canvas.toDataURL();
+};
+
+export const normaliseSpritesheet = (spritesheet) => {
+	return tf.tidy(() => spritesheet.div(255 / 2).sub(1));
 };
 
 export const splitSpritesheet = (sprites, spriteShape) => {
@@ -80,4 +77,20 @@ export const splitSpritesheet = (sprites, spriteShape) => {
 		sprites = sprites.reshape([count, height, width, channels]);
 		return sprites;
 	});
+};
+
+export const getMinValue = (tensor) => {
+	return tf.tidy(() => tf.min(tensor).dataSync());
+};
+
+export const getMaxValue = (tensor) => {
+	return tf.tidy(() => tf.max(tensor).dataSync());
+};
+
+export const padInput = (sprite, padShape) => {
+	return tf.tidy(() => sprite.pad([[0, 0], [0, padShape[0]], [0, padShape[1]], [0, padShape[2]]], 0));
+};
+
+export const cropInput = (sprite, cropShape) => {
+	return tf.tidy(() => sprite.slice([0, 0, 0, 0], [-1, ...cropShape]));
 };

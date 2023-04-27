@@ -7,5 +7,5 @@ export const generator = writable(null);
 export const discriminator = writable(null);
 export const gan = writable(null);
 
-export const genLearningRate = writable(0.00001);
-export const discLearningRate = writable(0.0001);
+export const genLearningRate = writable(0.0002);
+export const discLearningRate = writable(0.0002);

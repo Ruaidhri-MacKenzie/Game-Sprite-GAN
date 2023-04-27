@@ -35,6 +35,7 @@
 <section>
 	<h2>Generate</h2>
 	<input on:change={uploadSource} type="file" name="sourceImage">
+	<p>Images must be PNG format and {$spriteWidth}px in width by {$spriteHeight}px in height.</p>
 	{#if source}
 		<button on:click={generate} disabled={!$generator || generating}>Generate</button>
 		<button on:click={toggleBackground}>Toggle Background</button>
