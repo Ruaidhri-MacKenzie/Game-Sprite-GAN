@@ -1,10 +1,16 @@
 <script>
-	import "$lib/styles/reset.css";
+	import "$lib/styles/global.css";
+
+	let title = "spriteGAN.js";
 </script>
+
+<svelte:head>
+	<title>{title}</title>
+</svelte:head>
 
 <div>
 	<header>
-		<h1>spriteGAN.js</h1>
+		<h1>{title}</h1>
 	</header>
 	
 	<slot />
@@ -28,6 +34,9 @@
 
 	footer {
 		text-align: right;
-		padding: 1em 0.5em 0.5em;
+		margin-top: 1em;
+		padding: 0.5em;
+		background-color: hsl(0 0% 25%);
+		color: white;
 	}
 </style>

@@ -3,12 +3,14 @@
 	import { spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
 	import { generator, inputShape } from "$lib/stores/model.js";
 	import { imageToSprite, spriteToInput, outputToSprite } from "$lib/utils/data.utils.js";
-	
+	import Section from "$lib/components/common/section.svelte";
+	import InputUpload from "$lib/components/common/input-upload.svelte";
+
 	let generating = false;
 	let sourceImage;
 	let generatedImage;
 	let source;
-	let white = false;
+	let backgroundColour = "#000000";
 
 	const uploadSource = async (event) => {
 		const sprite = await imageToSprite(URL.createObjectURL(event.target.files[0]), $spriteChannels);
@@ -26,32 +28,31 @@
 		tf.dispose([target, targetSprite]);
 		generating = false;
 	};
-	
-	const toggleBackground = (event) => {
-		white = !white;
-	};
 </script>
 
-<section>
-	<h2>Generate</h2>
-	<input on:change={uploadSource} type="file" name="sourceImage">
-	<p>Images must be PNG format and {$spriteWidth}px in width by {$spriteHeight}px in height.</p>
-	{#if source}
-		<button on:click={generate} disabled={!$generator || generating}>Generate</button>
-		<button on:click={toggleBackground}>Toggle Background</button>
-	{/if}
-	<span>
-		<canvas class:white bind:this={sourceImage}></canvas>
-		<canvas class:white bind:this={generatedImage}></canvas>
-	</span>
-</section>
+<Section title="Generate">
+	<div>
+		<InputUpload text="Upload Source Image" handleChange={uploadSource} accept="image/*"/>
+		<p>Images must be PNG format and {$spriteWidth}px in width by {$spriteHeight}px in height.</p>
+		{#if source}
+			<button on:click={generate} disabled={!$generator || generating}>Generate</button>
+			<label>
+				Background:
+				<input type="color" bind:value={backgroundColour}>
+			</label>
+		{/if}
+		<span style="--background: {backgroundColour}">
+			<canvas bind:this={sourceImage}></canvas>
+			<canvas bind:this={generatedImage}></canvas>
+		</span>
+	</div>
+</Section>
 
 <style>
-	section {
+	div {
 		display: grid;
 		gap: 1em;
 		padding: 1em;
-		box-shadow: 0 3px 8px hsl(0 0% 0% / 0.24);
 	}
 
 	span {
@@ -59,23 +60,21 @@
 		gap: 1em;
 		padding: 1em;
 	}
+	
+	label {
+		width: fit-content;
+		display: flex;
+		align-items: center;
+		gap: 1em;
+	}
+
+	input {
+		cursor: pointer;
+	}
 
 	canvas {
-		background-color: black;
+		background-color: var(--background);
 		width: 64px;
 		height: 64px;
-	}
-
-	canvas.white {
-		background-color: white;
-	}
-
-	button {
-		width: fit-content;
-		padding: 0.5em 1em;
-	}
-		
-	input[type="file"] {
-		cursor: pointer;
 	}
 </style>

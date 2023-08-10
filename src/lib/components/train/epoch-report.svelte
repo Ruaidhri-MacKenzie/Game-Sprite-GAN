@@ -31,6 +31,8 @@
 		height: 9em;
 		overflow-y: scroll;
 		list-style-type: none;
+		border: 1px solid black;
+		background-color: hsl(0 0% 98%);
 	}
 
 	li {

@@ -7,6 +7,7 @@
 	import Linechart from "$lib/components/train/linechart.svelte";
 	import EpochReport from "$lib/components/train/epoch-report.svelte";
 	import EpochTest from "$lib/components/train/epoch-test.svelte";
+	import Section from "$lib/components/common/section.svelte";
 	
 	let epoch = 0;
 	let step = 0;
@@ -149,37 +150,41 @@
 	};
 </script>
 
-<section>
-	<h2>Train</h2>
-	{#if $training}
-		<p>Training...</p>
-		<p>Active Tensors: {tensors}</p>
-		<p>Epoch: {epoch + 1}/{$epochs}, Step: {step + 1}/{stepsPerEpoch}</p>
-	{:else}
-		<label>
-			<p>Epochs:</p>
-			<input bind:value={$epochs} type="number" min={1} />
-		</label>
-		<button disabled={!$trainData} on:click={trainModel}>Train</button>
-	{/if}
+<Section title="Train">
+	<div>
+		{#if $training}
+			<p>Training...</p>
+			<p>Active Tensors: {tensors}</p>
+			<p>Epoch: {epoch + 1}/{$epochs}, Step: {step + 1}/{stepsPerEpoch}</p>
+		{:else}
+			<label>
+				<p>Epochs:</p>
+				<input bind:value={$epochs} type="number" min={1} />
+			</label>
+			<button disabled={!$trainData || !$generator || !$discriminator || !$gan} on:click={trainModel}>Train</button>
+		{/if}
 
-	<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Epoch" yLabel="Generator Loss" />
-	<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Epoch" yLabel="Discriminator Loss" />
-	<EpochReport log={$epochLog} step={step} steps={stepsPerEpoch} />
-	<EpochTest sources={testSources} targets={testTargets} tests={epochTests} />
-</section>
+		<details>
+			<summary>Generator Loss</summary>
+			<Linechart values={$genLossHistory} name="Generator Loss" xLabel="Epoch" yLabel="Generator Loss" />
+		</details>
+
+		<details>
+			<summary>Discriminator Loss</summary>
+			<Linechart values={$discLossHistory} name="Discriminator Loss" xLabel="Epoch" yLabel="Discriminator Loss" />
+		</details>
+
+		<EpochReport log={$epochLog} step={step} steps={stepsPerEpoch} />
+
+		<EpochTest sources={testSources} targets={testTargets} tests={epochTests} />
+	</div>
+</Section>
 
 <style>
-	section {
+	div {
 		display: grid;
 		gap: 1em;
 		padding: 1em;
-		box-shadow: 0 3px 8px hsl(0 0% 0% / 0.24);
-	}
-
-	button {
-		width: fit-content;
-		padding: 0.5em 1em;
 	}
 
 	label {

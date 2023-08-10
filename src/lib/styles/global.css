@@ -1,0 +1,60 @@
+*, *::before, *::after {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+:root {
+	--color-primary: hsl(296 57% 30%);
+	--color-highlight: hsl(296 52% 40%);
+	--color-contrast: white;
+}
+
+body {
+	font-family: "Courier New", Courier, monospace;
+}
+
+button, input, textarea, select {
+	font-size: inherit;
+	font-family: inherit;
+}
+
+button {
+	font-weight: bold;
+	width: fit-content;
+	padding: 0.5em 1em;
+	border: 2px solid black;
+	background-color: hsl(0 0% 98%);
+	color: black;
+	cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+	background-color: var(--color-primary);
+	color: hsl(0 0% 95%);
+}
+
+button:active {
+	background-color: var(--color-highlight);
+	color: white;
+}
+
+button:disabled {
+	border: 2px solid black !important;
+	background-color: hsl(0 0% 85%) !important;
+	color: hsl(0 0% 40%) !important;
+	cursor: not-allowed !important;
+}
+
+select {
+	padding: 0.25em;
+	border: 1px solid black;
+	background-color: white;
+	color: black;
+	cursor: pointer;
+}
+
+input {
+	padding: 0.25em;
+}

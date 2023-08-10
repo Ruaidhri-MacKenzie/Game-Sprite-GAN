@@ -4,54 +4,58 @@
 	export let tests;
 </script>
 
-<ul>
-	<span>
+<div>
+	<ul class="example">
 		<li>
 			<p>Source:</p>
 			{#each sources as source}
 				<img src={source} alt="source test" />
 			{/each}
 		</li>
+
 		<li>
 			<p>Target:</p>
 			{#each targets as target}
 				<img src={target} alt="target test" />
 			{/each}
 		</li>
-	</span>
-	<div>
+	</ul>
+
+	<ul class="test">
 		{#each tests as epochTests, i}
 			<li>
 				<p>Epoch {(tests.length - 1) - i}:</p>
 				{#each epochTests as epochTestImage}
-				<img src={epochTestImage} alt="test" />
+					<img src={epochTestImage} alt="test" />
 				{/each}
 			</li>
 		{/each}
-	</div>
-</ul>
+	</ul>
+</div>
 
 <style>
-	ul {
+	div {
 		display: flex;
 		flex-direction: column;
 		gap: 1em;
 		list-style-type: none;
+		border: 1px solid black;
 	}
 
-	span {
-		margin-right: 17px;
+	ul {
 		display: flex;
 		flex-direction: column;
 		gap: 1em;
 	}
 
-	div {
+	ul.example {
+		margin-right: 17px;
+		padding-block: 1em;
+	}
+
+	ul.test {
 		height: 20em;
 		overflow-y: scroll;
-		display: flex;
-		flex-direction: column;
-		gap: 1em;
 	}
 
 	li {

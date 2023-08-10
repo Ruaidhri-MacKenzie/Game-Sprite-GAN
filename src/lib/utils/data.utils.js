@@ -64,8 +64,8 @@ export const spriteToImage = async (sprite) => {
 	return canvas.toDataURL();
 };
 
-export const normaliseSpritesheet = (spritesheet) => {
-	return tf.tidy(() => spritesheet.div(255 / 2).sub(1));
+export const normalisePixelValues = (image) => {
+	return tf.tidy(() => image.div(255 / 2).sub(1));
 };
 
 export const splitSpritesheet = (sprites, spriteShape) => {
@@ -93,4 +93,19 @@ export const padInput = (sprite, padShape) => {
 
 export const cropInput = (sprite, cropShape) => {
 	return tf.tidy(() => sprite.slice([0, 0, 0, 0], [-1, ...cropShape]));
+};
+
+export const applyBatchJitter = (source, target) => {
+	return tf.tidy(() => {
+		const batchSize = source.shape[0];
+		const jitter = 0.1;
+
+		// Apply random rotation within the jitter range
+		const angles = tf.randomUniform([batchSize], -jitter, jitter);
+		const rotatedSource = tf.image.rotateWithOffset(source, angles);
+		const rotatedTarget = tf.image.rotateWithOffset(target, angles);
+		const newSource = source.concat(rotatedSource);
+		const newTarget = target.concat(rotatedTarget);
+		return [newSource, newTarget];
+	});
 };

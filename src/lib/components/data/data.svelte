@@ -1,27 +1,34 @@
 <script>
 	import { trainData } from "$lib/stores/data.js";
 	import Upload from "./upload.svelte";
+	import Process from "./process.svelte";
 	import Preview from "./preview.svelte";
+	import Section from "$lib/components/common/section.svelte";
+
+	let spritesheet;
+	let sprites;
 </script>
 
-<section>
-	<h2>Data</h2>
+<Section title="Data">
 	<div>
-		<Upload />
+		<Upload bind:spritesheet />
+
+		{#if spritesheet}
+			<Process bind:spritesheet bind:sprites />
+		{/if}
+		
 		{#if $trainData}
-			<Preview />
+			<Preview dataset={$trainData} />
 		{/if}
 	</div>
-</section>
+</Section>
 
 <style>
-	section {
-		padding: 1em;
-		box-shadow: 0 3px 8px hsl(0 0% 0% / 0.24);
-	}
-
 	div {
 		display: flex;
 		flex-direction: column;
+		align-items: center;
+		gap: 3em;
+		padding: 1em;
 	}
 </style>

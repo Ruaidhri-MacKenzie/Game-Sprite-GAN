@@ -4,6 +4,7 @@
 	import { generator, inputShape } from "$lib/stores/model.js";
 	import { getBatch, imageToSprite, cropInput } from "$lib/utils/data.utils.js";
 	import { training, epochLog } from "$lib/stores/train.js";
+	import Section from "$lib/components/common/section.svelte";
 
 	let pretrainData;
 	let stepsPerEpoch = 0;
@@ -70,30 +71,25 @@
 	};
 </script>
 
-<section>
-	<h2>Pre-Train</h2>
-	{#if $training}
-		<p>Training...</p>
-		<progress value={step} max={stepsPerEpoch}></progress>
-	{:else}
-		{#if !pretrainData}
-			<button on:click={loadPretrainData} disabled={$training}>Load</button>
+<Section title="Pre-Train">
+	<div>
+		{#if $training}
+			<p>Training...</p>
+			<progress value={step} max={stepsPerEpoch}></progress>
+		{:else}
+			{#if !pretrainData}
+				<button on:click={loadPretrainData} disabled={$training}>Load</button>
+			{/if}
+			<button on:click={trainGeneratorVAE} disabled={!$generator || $training}>Pre-Train VAE</button>
+			<button on:click={trainGeneratorDegrade} disabled={!$generator || $training || !pretrainData}>Pre-Train Degrade</button>
 		{/if}
-		<button on:click={trainGeneratorVAE} disabled={!$generator || $training}>Pre-Train VAE</button>
-		<button on:click={trainGeneratorDegrade} disabled={!$generator || $training || !pretrainData}>Pre-Train Degrade</button>
-	{/if}
-</section>
+	</div>
+</Section>
 
 <style>
-	section {
+	div {
 		display: grid;
 		gap: 1em;
 		padding: 1em;
-		box-shadow: 0 3px 8px hsl(0 0% 0% / 0.24);
-	}
-	
-	button {
-		width: fit-content;
-		padding: 0.5em 1em;
 	}
 </style>
