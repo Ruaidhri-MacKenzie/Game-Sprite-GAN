@@ -48,6 +48,10 @@
 	}
 
 	label {
+		width: fit-content;
+		display: flex;
+		align-items: center;
+		gap: 1em;
 		padding: 1em;
 	}
 
