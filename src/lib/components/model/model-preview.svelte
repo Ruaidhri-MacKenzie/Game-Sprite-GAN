@@ -6,8 +6,6 @@
 	export let name = "Model";
 	
 	let element;
-	$: active = Boolean(model);
-	$: status = (active) ? "✓" : "X";
 
 	afterUpdate(() => {
 		if (model) tfvis.show.modelSummary(element, model);
@@ -15,15 +13,17 @@
 </script>
 
 <details bind:this={element}>
-	<summary>{name}: <span class:active>{status}</span></summary>
+	<summary>{name} Summary</summary>
 </details>
 
 <style>
-	span {
-		color: red;
+	details {
+		padding: 0.25em;
 	}
-
-	span.active {
-		color: green;
+	
+	summary {
+		text-align: center;
+		user-select: none;
+		cursor: pointer;
 	}
 </style>

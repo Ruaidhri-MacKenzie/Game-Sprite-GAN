@@ -1,14 +1,16 @@
 <script>
 	import * as tf from "@tensorflow/tfjs";
-	import { trainData, testData, trainTestSplit, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
+	import { trainData, testData, testInputs, spriteWidth, spriteHeight, spriteChannels } from "$lib/stores/data.js";
 	import { inputShape } from "$lib/stores/model.js";
-	import { getBatch, normalisePixelValues, splitSpritesheet, padInput, cropInput } from "$lib/utils/data.utils.js";
+	import { testSources, testTargets } from "$lib/stores/train.js";
+	import { getBatch, outputsToImages, normalisePixelValues, splitSpritesheet, padInput, cropInput } from "$lib/utils/data.utils.js";
 	import TensorInfo from "./tensor-info.svelte";
 
 	export let spritesheet;
 	export let sprites;
 
 	let loadingData = false;
+	let trainTestSplit = 3;
 
 	const processSpritesheet = async (event) => {
 		// Turn spritesheet into test and train datasets { source: tensor4d, target: tensor4d }
@@ -38,7 +40,7 @@
 		
 		// Split into test and train datasets
 		const pairCount = source.shape[0];
-		const testCount = $trainTestSplit >= 1 ? Math.floor($trainTestSplit) : Math.floor(pairCount * (1 - $trainTestSplit));
+		const testCount = trainTestSplit >= 1 ? Math.floor(trainTestSplit) : Math.floor(pairCount * (1 - trainTestSplit));
 
 		$trainData = {
 			source: getBatch(source, $inputShape, 0, pairCount - testCount),
@@ -50,7 +52,31 @@
 			target: getBatch(target, $inputShape, pairCount - testCount, testCount),
 		};
 
-		tf.dispose([source, target]);
+		// Create list of source inputs for testing
+		$testInputs = [
+			getBatch($trainData.source, $inputShape, 0, 1),
+			getBatch($testData.source, $inputShape, 0, 1),
+			getBatch($testData.source, $inputShape, 1, 1),
+			getBatch($testData.source, $inputShape, 2, 1),
+		];
+
+		// Create list of target outputs for testing
+		const testOutputs = [
+			getBatch($trainData.target, $inputShape, 0, 1),
+			getBatch($testData.target, $inputShape, 0, 1),
+			getBatch($testData.target, $inputShape, 1, 1),
+			getBatch($testData.target, $inputShape, 2, 1),
+		];
+
+		const spriteShape = [$spriteHeight, $spriteWidth, $spriteChannels];
+
+		// Convert source inputs to images
+		$testSources = await outputsToImages($testInputs, spriteShape);
+
+		// Convert target outputs to images
+		$testTargets = await outputsToImages(testOutputs, spriteShape);
+
+		tf.dispose([source, target, testOutputs]);
 		loadingData = false;
 	};
 </script>

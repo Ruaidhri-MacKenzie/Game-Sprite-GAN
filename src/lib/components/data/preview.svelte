@@ -3,10 +3,10 @@
 	import { onMount } from "svelte";
 	import { spriteHeight, spriteWidth, spriteChannels } from "$lib/stores/data.js";
 	import { inputShape } from "$lib/stores/model.js";
+	import { backgroundColour } from "$lib/stores/style.js";
 	import { getSample, outputToSprite } from "$lib/utils/data.utils.js";
 
 	export let dataset;
-	let backgroundColour = "#000000";
 
 	let sourcePreview;
 	let targetPreview;
@@ -41,10 +41,10 @@
 
 	<label>
 		Background:
-		<input type="color" bind:value={backgroundColour}>
+		<input type="color" bind:value={$backgroundColour}>
 	</label>
 
-	<span style="--background: {backgroundColour}">
+	<span style="--background: {$backgroundColour}">
 		<button on:click={backPreview}>Back</button>
 		<canvas bind:this={sourcePreview}></canvas>
 		<canvas bind:this={targetPreview}></canvas>

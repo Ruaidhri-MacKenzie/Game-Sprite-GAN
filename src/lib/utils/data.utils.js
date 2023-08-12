@@ -64,6 +64,15 @@ export const spriteToImage = async (sprite) => {
 	return canvas.toDataURL();
 };
 
+export const outputsToImages = async (outputs, imageShape) => {
+	return await Promise.all(outputs.map(async (output) => {
+		const sprite = outputToSprite(output, imageShape);
+		const image = await spriteToImage(sprite);
+		sprite.dispose();
+		return image;
+	}));
+};
+
 export const normalisePixelValues = (image) => {
 	return tf.tidy(() => image.div(255 / 2).sub(1));
 };

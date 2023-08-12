@@ -9,6 +9,7 @@
 
 <style>
 	section {
+		min-width: 720px;
 		box-shadow: 0 3px 8px hsl(0 0% 0% / 0.24);
 	}
 	

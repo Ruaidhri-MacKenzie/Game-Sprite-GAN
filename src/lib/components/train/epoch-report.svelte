@@ -1,10 +1,7 @@
 <script>
 	import { beforeUpdate, afterUpdate } from "svelte";
+	import { epochLog, step, stepsPerEpoch } from "$lib/stores/train.js";
 	
-	export let log = [];
-	export let step = 0;
-	export let steps = 0;
-
 	let list;
 	let autoScroll = true;
 
@@ -16,17 +13,27 @@
 		if (list && autoScroll) list.scrollTop = list.scrollHeight;
 	});
 </script>
+
 <div>
 	<h3>Epoch Report</h3>
-	<progress value={step} max={steps}></progress>
+	<progress value={$step} max={$stepsPerEpoch}></progress>
 	<ul bind:this={list}>
-		{#each log as report}
+		{#each $epochLog as report}
 			<li>{report}</li>
 		{/each}
 	</ul>
 </div>
 
 <style>
+	div {
+		display: flex;
+		flex-direction: column;
+	}
+
+	h3 {
+		text-align: center;
+	}
+	
 	ul {
 		height: 9em;
 		overflow-y: scroll;
